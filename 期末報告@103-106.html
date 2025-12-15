@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>健康自我評估 | Adaptive Check</title>
+
+  <style>
+    /* =========================================================
+    ========================================================= */
+    :root{
+      /* --- 三種狀態顏色（照你指定）--- */
+      --color-good: #616E54;     /* 健康 */
+      --color-mid:  #A4A06D;     /* 微輕/微重（同色） */
+      --color-bad:  #D9D9D9;     /*不知道為甚麼顏色跑不出來先別管他 */
+
+      /* --- 整體底色（更綠）--- */
+      --page-bg: #F1F5EF;
+      --card-bg: #FFFFFF;
+
+      --text: #111827;
+      --muted: #6B7280;
+      --line: rgba(17,24,39,.08);
+
+      --radius: 18px;
+      --shadow: 0 18px 45px rgba(17,24,39,.08);
+
+      /* --- 會被 JS 依結果改色的變數 --- */
+      --page-tint: rgba(97,110,84,.10);     /* 背景淡色 */
+      --hd-tint: rgba(97,110,84,.14);       /* 卡片標題區淡色 */
+      --focus-ring: rgba(97,110,84,.18);    /* focus 光暈 */
+    }
+
+    /* =========================================================
+      ✅ 把 number 欄位的上下箭頭（spinner）弄掉
+      - Chrome/Edge/Safari (webkit)
+      - Firefox
+    ========================================================= */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button{
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"]{
+      -moz-appearance: textfield; /* Firefox */
+      appearance: textfield;
+    }
+
+    /* =========================================================
+      1) 全站基礎
+    ========================================================= */
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+
+      background:
+        radial-gradient(1200px 650px at 18% 8%, var(--page-tint), transparent 60%),
+        radial-gradient(900px 520px at 85% 18%, rgba(164,160,109,.18), transparent 55%),
+        var(--page-bg);
+
+      min-height:100vh;
+      letter-spacing:.2px;
+    }
+
+    .wrap{
+      width:min(980px, 92vw);
+      margin:42px auto 60px;
+    }
+
+    /* =========================================================
+      2) Header
+    ========================================================= */
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:18px;
+      margin-bottom:18px;
+    }
+    .brand{display:flex; flex-direction:column; gap:8px;}
+    .title{
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 720;
+      line-height:1.15;
+      margin:0;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      font-size: 14.5px;
+      max-width: 60ch;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,.75);
+      backdrop-filter: blur(8px);
+      font-size: 12.5px;
+      color: rgba(17,24,39,.72);
+      user-select:none;
+      white-space:nowrap;
+    }
+
+    /* =========================================================
+      3) 主卡片
+    ========================================================= */
+    .card{
+      background: rgba(255,255,255,.78);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:18px 18px 12px;
+      border-bottom: 1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+
+      /* ✅ 標題區也會跟著結果變色（JS 會改 --hd-tint） */
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,255,255,.60)),
+        radial-gradient(900px 220px at 18% 20%, var(--hd-tint), transparent 65%);
+    }
+    .card .hd h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing:.3px;
+    }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      padding:6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(17,24,39,.03);
+      font-size:12px;
+      color: rgba(17,24,39,.72);
+    }
+    .bd{padding:18px}
+
+    /* =========================================================
+      4) 表單輸入
+    ========================================================= */
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    @media (max-width:520px){
+      .row{grid-template-columns:1fr}
+    }
+    label{
+      font-size:12.5px;
+      color: rgba(17,24,39,.78);
+      display:block;
+      margin-bottom:6px;
+    }
+    input[type="number"], select{
+      width:100%;
+      padding:12px 12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.95);
+      outline:none;
+      font-size: 14.5px;
+    }
+    input[type="number"]:focus, select:focus{
+      border-color: rgba(17,24,39,.22);
+      box-shadow: 0 0 0 4px var(--focus-ring);
+    }
+    .hint{
+      font-size:12.5px;
+      color: var(--muted);
+      margin:8px 0 0;
+    }
+
+    .progress{
+      height:10px;
+      background: rgba(17,24,39,.06);
+      border-radius: 999px;
+      overflow:hidden;
+    }
+    .bar{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(97,110,84,.85), rgba(164,160,109,.75));
+      border-radius: 999px;
+      transition: width .35s ease;
+    }
+
+    .btns{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    button{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.92);
+      color: rgba(17,24,39,.88);
+      padding:11px 14px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      cursor:pointer;
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    button:hover{
+      background: rgba(255,255,255,1);
+      border-color: rgba(17,24,39,.18);
+    }
+    button:active{transform: translateY(1px)}
+    .primary{
+      background: rgba(17,24,39,.88);
+      color: #fff;
+      border-color: rgba(17,24,39,.88);
+    }
+    .primary:hover{background: rgba(17,24,39,1)}
+    .ghost{ background: transparent; }
+
+    .divider{
+      height:1px;
+      background: var(--line);
+      margin: 16px 0;
+    }
+
+    /* =========================================================
+      5) 選擇題卡片
+    ========================================================= */
+    .q{ margin: 0 0 14px; }
+    .q .qtitle{
+      font-weight: 650;
+      font-size: 14.5px;
+      margin-bottom:10px;
+    }
+    .choices{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
+    @media (max-width:520px){
+      .choices{grid-template-columns:1fr}
+    }
+    .choice{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.92);
+      border-radius: 16px;
+      padding:12px 12px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      cursor:pointer;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .06s ease;
+    }
+    .choice:hover{
+      border-color: rgba(17,24,39,.18);
+      box-shadow: 0 10px 22px rgba(17,24,39,.06);
+    }
+    .choice:active{transform: translateY(1px)}
+    .dot{
+      width:18px;height:18px;border-radius:999px;
+      border:1px solid rgba(17,24,39,.18);
+      margin-top:2px;
+      background: rgba(17,24,39,.02);
+      display:grid;place-items:center;
+      flex:0 0 auto;
+    }
+    .dot::after{
+      content:"";
+      width:10px;height:10px;border-radius:999px;
+      background: transparent;
+    }
+    .choice.selected{
+      border-color: rgba(17,24,39,.28);
+      box-shadow: 0 0 0 4px var(--focus-ring);
+    }
+    .choice.selected .dot::after{background: rgba(17,24,39,.82)}
+    .choice .meta{
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+    }
+    .choice .meta .t{
+      font-weight:650;
+      font-size: 13.5px;
+    }
+    .choice .meta .d{
+      font-size:12.5px;
+      color: var(--muted);
+      line-height:1.35;
+    }
+
+    /* =========================================================
+      6) 右側面板
+    ========================================================= */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:18px;
+      margin-top:18px;
+    }
+    @media (max-width: 860px){
+      .grid{grid-template-columns:1fr}
+    }
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+    .panel{
+      background: rgba(255,255,255,.72);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      padding:16px;
+      box-shadow: 0 18px 45px rgba(17,24,39,.05);
+    }
+    .panel h3{
+      margin:0 0 8px;
+      font-size: 14.5px;
+      letter-spacing:.2px;
+    }
+    .small{
+      font-size:12.5px;
+      color: var(--muted);
+      line-height:1.55;
+      margin:0;
+      white-space:pre-line;
+    }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:12px;
+    }
+    .kpi{
+      border:1px solid var(--line);
+      background: rgba(17,24,39,.02);
+      border-radius: 16px;
+      padding:10px 10px;
+    }
+    .kpi .v{
+      font-weight:760;
+      font-size: 18px;
+      letter-spacing:.2px;
+    }
+    .kpi .l{
+      font-size:12px;
+      color: var(--muted);
+      margin-top:4px;
+    }
+
+    .status{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius: 16px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.75);
+    }
+    .status .s-left{
+      display:flex; flex-direction:column; gap:2px;
+    }
+    .status .s-title{
+      font-weight: 700;
+      font-size: 13.5px;
+    }
+    .status .s-desc{
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height:1.35;
+    }
+
+    .badge{
+      padding:7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border:1px solid var(--line);
+      background: rgba(17,24,39,.03);
+      white-space:nowrap;
+    }
+    .badge.good{
+      background: rgba(97,110,84,.18);
+      border-color: rgba(97,110,84,.45);
+      color: rgba(17,24,39,.85);
+    }
+    .badge.mid{
+      background: rgba(164,160,109,.20);
+      border-color: rgba(164,160,109,.55);
+      color: rgba(17,24,39,.85);
+    }
+    .badge.bad{
+      background: rgba(217,217,217,.40);
+      border-color: rgba(217,217,217,.90);
+      color: rgba(17,24,39,.78);
+    }
+
+    .toast{
+      display:none;
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(164,160,109,.55);
+      background: rgba(164,160,109,.16);
+      color: rgba(17,24,39,.78);
+      font-size: 12.5px;
+      line-height:1.45;
+    }
+
+    footer{
+      margin-top:18px;
+      color: rgba(17,24,39,.55);
+      font-size: 12px;
+      text-align:center;
+    }
+    .mutedLink{
+      color: rgba(17,24,39,.62);
+      text-decoration: none;
+      border-bottom:1px dotted rgba(17,24,39,.28)
+    }
+    .mutedLink:hover{color: rgba(17,24,39,.85)}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <h1 class="title">健康自我評估</h1>
+        <p class="subtitle">
+          檢測的順序流程：先算 BMI → 需要時進生活檢測 → 若風險較高再做肌少症自我檢驗（3 題）。
+        </p>
+      </div>
+
+    </header>
+
+    <div class="card">
+      <div class="hd">
+        <h2 id="stepTitle">Step 1 — BMI檢視</h2>
+        <span class="tag" id="stepTag">1 / 3</span>
+      </div>
+
+      <div class="bd">
+        <div class="progress" aria-label="progress">
+          <div class="bar" id="bar"></div>
+        </div>
+
+        <p class="hint" id="stepHint">
+          先輸入年齡、身高、體重。系統會計算 BMI，並決定下一步要不要做生活檢測。
+        </p>
+
+        <div class="divider"></div>
+
+        <!-- ====================== STEP 1：基本資料 + BMI ====================== -->
+        <section id="step1">
+          <div class="row">
+            <div>
+              <label for="ageInput">年齡</label>
+              <input id="ageInput" type="number" min="5" max="120" placeholder="請輸入您的年齡" />
+            </div>
+            <div>
+              <label for="waistInput">腰圍（可填可不填）</label>
+              <input id="waistInput" type="number" min="30" max="200" placeholder="請輸入您的腰圍" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="heightInput">身高（cm）</label>
+              <input id="heightInput" type="number" min="80" max="230" placeholder="請輸入您的身高" />
+            </div>
+            <div>
+              <label for="weightInput">體重（kg）</label>
+              <input id="weightInput" type="number" min="15" max="250" placeholder="請輸入您的體重" />
+            </div>
+          </div>
+
+          <div class="btns">
+            <button class="primary" id="btnCalcBMI">檢測你的 BMI →</button>
+            <button class="ghost" id="btnReset">重置</button>
+          </div>
+
+          <div class="toast" id="toastBox"></div>
+        </section>
+
+        <!-- ====================== STEP 2：生活檢測 ====================== -->
+        <section id="step2" style="display:none;">
+          <div class="q">
+            <div class="qtitle">每週中等強度運動的天數？</div>
+            <div class="choices" id="life_act"></div>
+          </div>
+
+          <div class="q">
+            <div class="qtitle">每天久坐時間大約？</div>
+            <div class="choices" id="life_sit"></div>
+          </div>
+
+          <div class="q">
+            <div class="qtitle">最近一週睡眠狀況？</div>
+            <div class="choices" id="life_sleep"></div>
+          </div>
+
+          <div class="q">
+            <div class="qtitle">外食 / 高油高糖頻率？</div>
+            <div class="choices" id="life_food"></div>
+          </div>
+
+          <div class="q">
+            <div class="qtitle">最近是否常覺得疲勞或體力下降？</div>
+            <div class="choices" id="life_fatigue"></div>
+          </div>
+
+          <div class="btns">
+            <button class="primary" id="btnLifeDone">下一步→</button>
+            <button class="ghost" id="btnBackTo1">返回</button>
+          </div>
+        </section>
+
+        <section id="step3" style="display:none;">
+          <p class="hint" style="margin-top:0;">
+            這是「肌少症自行檢驗」的簡易測驗：不求醫療診斷，只是幫你抓風險訊號（3 題）。
+          </p>
+
+          <div class="q">
+            <div class="qtitle">小腿圍自測：拇指 + 中指能不能圈住小腿最粗處？</div>
+            <div class="choices" id="muscle_calf"></div>
+          </div>
+
+          <div class="q">
+            <div class="qtitle">從椅子起身（不用手撐）是否吃力？</div>
+            <div class="choices" id="muscle_chair"></div>
+          </div>
+
+          <div class="q">
+            <div class="qtitle">走 10 分鐘是否容易覺得「腿沒力 / 很喘 / 需要一直停」？</div>
+            <div class="choices" id="muscle_walk"></div>
+          </div>
+
+          <div class="btns">
+            <button class="primary" id="btnFinish">看結果→</button>
+            <button class="ghost" id="btnBackTo2">返回</button>
+          </div>
+        </section>
+
+        <!-- ====================== RESULT：結果區 ====================== -->
+        <section id="result" style="display:none;">
+          <div class="status">
+            <div class="s-left">
+              <div class="s-title">你的健康檢查結果</div>
+              <div class="s-desc" id="resultLine">—</div>
+            </div>
+            <span class="badge" id="overallBadge">—</span>
+          </div>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="v" id="bmiVal">—</div>
+              <div class="l">BMI指數</div>
+            </div>
+            <div class="kpi">
+              <div class="v" id="lifeVal">—</div>
+              <div class="l">生活習慣</div>
+            </div>
+          </div>
+
+          <div class="kpis" style="margin-top:10px;">
+            <div class="kpi">
+              <div class="v" id="muscleVal">—</div>
+              <div class="l">是否有肌少機率</div>
+            </div>
+            <div class="kpi">
+              <div class="v" id="ageVal">—</div>
+              <div class="l">年齡</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="panel" style="margin:0;">
+            <h3>針對你給的小小建議</h3>
+            <p class="small" id="suggestionsText">—</p>
+          </div>
+
+          <div class="btns">
+            <button class="primary" id="btnRestart">重新開始 →</button>
+          </div>
+
+          <p class="hint">
+            提醒：本測驗為自我檢測以及參考網路大眾的檢測模式，非醫療診斷，只是期末報告。若症狀明顯或持續不適，建議諮詢醫師或專業人員!!!
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="side">
+        <div class="panel">
+          <h3>測驗的小小目的</h3>
+          <p class="small">
+            1) BMI 不健康（過輕/微重/過重）→ 必做生活檢測。<br/>
+            2) BMI 健康 → 你可以選擇「直接看結果」或「加做生活檢測」。<br/>
+            3) 年齡 ≥ 50 且（生活高風險 或 BMI 不健康 + 疲勞）→ 建議做肌少症自我檢驗（3 題）。<br/>
+            你也可以在生活檢測做完後，自己選擇要不要做肌少症的檢測。
+          </p>
+        </div>
+
+        <div class="panel">
+          <h3>即時計算</h3>
+          <div class="kpis">
+            <div class="kpi">
+              <div class="v" id="liveBMI">—</div>
+              <div class="l">BMI</div>
+            </div>
+            <div class="kpi">
+              <div class="v" id="liveStatus">—</div>
+              <div class="l">狀態</div>
+            </div>
+          </div>
+
+          <div class="status" style="margin-top:12px;">
+            <div class="s-left">
+              <div class="s-title" id="liveTitle">Waiting…</div>
+              <div class="s-desc" id="liveDesc">輸入身高與體重後，這裡會即時更新。</div>
+            </div>
+            <span class="badge" id="liveBadge">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>什麼是肌少症？</h2>
+        <p class="small">
+          <br/>
+          肌少症是指因老化、活動量不足或營養攝取不均，導致肌肉量與肌力逐漸下降的狀況。初期可能僅表現為動作變慢或體力下降，但若未及早介入，會增加跌倒與骨折的風險，並可能影響行走能力與日常生活自理功能。肌少症不僅影響身體活動，也會對整體健康與生活品質造成長期影響。
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      122214103 林憶惠 · 122214106 鄧昕瑜</a>
+    </footer>
+  </div>
+
+  <script>
+    const getEl = (id) => document.getElementById(id);
+
+    const appData = {
+      stepNow: 1,
+
+      age: null,
+      heightCm: null,
+      weightKg: null,
+      waistCm: null,
+
+      bmi: null,
+      bmiLevel: null,   // 這不知道什麼 Gpt幫的先別動好了
+      bmiLabel: null,   // 文字更細：健康 / 微重 / 過輕 / 過重
+
+      lifeScore: null,
+      lifeLevel: null,  // good / mid / bad
+      isTired: false,
+
+      muscleScore: null,
+      muscleLevel: null,  // good / mid / bad
+      didMuscleTest: false
+    };
+
+    const bmiLabels = {
+      good: "健康",
+      mid_over: "微重",
+      bad_under: "過輕",
+      bad_over: "過重"
+    };
+
+    const levelText3 = {
+      good: "健康",
+      mid: "有風險",
+      bad:  "危險"
+    };
+
+    function setProgress(step){
+      const pct = step === 1 ? 20 : step === 2 ? 55 : step === 3 ? 80 : 100;
+      getEl("bar").style.width = pct + "%";
+      getEl("stepTag").textContent = step <= 3 ? `${step} / 3` : "Done";
+    }
+
+    function setStep(step){
+      appData.stepNow = step;
+      setProgress(step);
+
+      const stepTitleMap = {
+        1: "Step 1 — 身體基本檢測",
+        2: "Step 2 — 生活習慣檢測",
+        3: "Step 3 — 肌少症檢測"
+      };
+      const stepHintMap = {
+        1: "先輸入年齡、身高、體重。系統會計算 BMI，並決定下一步要不要做生活檢測。",
+        2: "選擇最符合你近 1–2 週的狀態。完成後會判斷是否建議做肌少症自我檢驗。",
+        3: "肌少症自我檢驗（3 題）：抓風險訊號，不是診斷。"
+      };
+
+      getEl("stepTitle").textContent = stepTitleMap[step] || "Result";
+      getEl("stepHint").textContent = stepHintMap[step] || "";
+
+      getEl("step1").style.display = step === 1 ? "block" : "none";
+      getEl("step2").style.display = step === 2 ? "block" : "none";
+      getEl("step3").style.display = step === 3 ? "block" : "none";
+      getEl("result").style.display = "none";
+    }
+
+    function showToast(msg){
+      const box = getEl("toastBox");
+      box.textContent = msg;
+      box.style.display = "block";
+    }
+    function hideToast(){
+      getEl("toastBox").style.display = "none";
+    }
+
+    function calcBMI(heightCm, weightKg){
+      const hM = heightCm / 100;
+      if(!hM || !weightKg) return null;
+      const bmi = weightKg / (hM * hM);
+      return Math.round(bmi * 10) / 10;
+    }
+
+    function bmiToInfo(bmi){
+      if(bmi == null) return { level:null, label:"—", desc:"" };
+
+      if(bmi < 18.5){
+        return { level:"bad", label:bmiLabels.bad_under, desc:"偏低：可以先檢視飲食、睡眠與壓力狀態" };
+      }
+      if(bmi < 24){
+        return { level:"good", label:bmiLabels.good, desc:"落在常見範圍：維持就很棒" };
+      }
+      if(bmi < 27){
+        return { level:"mid", label:bmiLabels.mid_over, desc:"略偏高：建議做生活檢測，看看是哪一塊在拖累" };
+      }
+      return { level:"bad", label:bmiLabels.bad_over, desc:"偏高：建議做生活檢測，從睡眠/久坐/飲食先挑一個改善" };
+    }
+
+    function applyThemeByLevel(level){
+      if(level === "good"){
+        document.documentElement.style.setProperty("--page-tint", "rgba(97,110,84,.12)");
+        document.documentElement.style.setProperty("--hd-tint", "rgba(97,110,84,.18)");
+        document.documentElement.style.setProperty("--focus-ring", "rgba(97,110,84,.18)");
+      }else if(level === "mid"){
+        document.documentElement.style.setProperty("--page-tint", "rgba(164,160,109,.14)");
+        document.documentElement.style.setProperty("--hd-tint", "rgba(164,160,109,.18)");
+        document.documentElement.style.setProperty("--focus-ring", "rgba(164,160,109,.20)");
+      }else if(level === "bad"){
+        document.documentElement.style.setProperty("--page-tint", "rgba(217,217,217,.30)");
+        document.documentElement.style.setProperty("--hd-tint", "rgba(217,217,217,.32)");
+        document.documentElement.style.setProperty("--focus-ring", "rgba(217,217,217,.55)");
+      }else{
+        document.documentElement.style.setProperty("--page-tint", "rgba(97,110,84,.10)");
+        document.documentElement.style.setProperty("--hd-tint", "rgba(97,110,84,.14)");
+        document.documentElement.style.setProperty("--focus-ring", "rgba(97,110,84,.18)");
+      }
+    }
+
+    function setBadge(el, level, label){
+      el.className = "badge";
+      if(level === "good") el.classList.add("good");
+      if(level === "mid")  el.classList.add("mid");
+      if(level === "bad")  el.classList.add("bad");
+      el.textContent = label || "—";
+    }
+
+    function updateLivePreview(){
+      const h = Number(getEl("heightInput").value);
+      const w = Number(getEl("weightInput").value);
+
+      const bmi = calcBMI(h, w);
+      const info = bmiToInfo(bmi);
+
+      getEl("liveBMI").textContent = bmi == null ? "—" : bmi.toFixed(1);
+      getEl("liveStatus").textContent = info.label;
+
+      getEl("liveTitle").textContent = bmi == null ? "Waiting…" : info.label;
+      getEl("liveDesc").textContent = bmi == null ? "輸入身高與體重後，這裡會即時更新。" : info.desc;
+
+      setBadge(getEl("liveBadge"), info.level, info.label);
+      applyThemeByLevel(info.level);
+    }
+
+    getEl("heightInput").addEventListener("input", updateLivePreview);
+    getEl("weightInput").addEventListener("input", updateLivePreview);
+
+
+
+    function buildChoiceCards(containerId, options, onPick){
+      const box = getEl(containerId);
+      box.innerHTML = "";
+
+      options.forEach((opt) => {
+        const card = document.createElement("div");
+        card.className = "choice";
+        card.setAttribute("role","button");
+        card.tabIndex = 0;
+
+        card.innerHTML = `
+          <div class="dot" aria-hidden="true"></div>
+          <div class="meta">
+            <div class="t">${opt.title}</div>
+            <div class="d">${opt.desc ?? ""}</div>
+          </div>
+        `;
+
+        const pick = () => {
+          [...box.querySelectorAll(".choice")].forEach(c => c.classList.remove("selected"));
+          card.classList.add("selected");
+          onPick(opt);
+        };
+
+        card.addEventListener("click", pick);
+        card.addEventListener("keydown", (e) => {
+          if(e.key === "Enter" || e.key === " "){
+            e.preventDefault();
+            pick();
+          }
+        });
+
+        box.appendChild(card);
+      });
+    }
+
+    const lifeQuiz = {
+      act: { pick:null, options:[
+        {title:"4+ 天", desc:"規律活動", score:0},
+        {title:"2–3 天", desc:"還不錯", score:1},
+        {title:"1 天", desc:"偏少", score:2},
+        {title:"幾乎沒有", desc:"需要調整", score:3},
+      ]},
+      sit: { pick:null, options:[
+        {title:"< 4 小時", desc:"久坐較少", score:0},
+        {title:"4–6 小時", desc:"普通", score:1},
+        {title:"6–8 小時", desc:"偏多", score:2},
+        {title:"> 8 小時", desc:"高久坐", score:3},
+      ]},
+      sleep: { pick:null, options:[
+        {title:"規律且充足", desc:"", score:0},
+        {title:"還可以", desc:"偶爾不穩", score:1},
+        {title:"不固定", desc:"常熬夜/晚睡", score:2},
+        {title:"睡不好", desc:"常醒/難入睡", score:3},
+      ]},
+      food: { pick:null, options:[
+        {title:"很少", desc:"", score:0},
+        {title:"每週 1–2 次", desc:"", score:1},
+        {title:"每週 3–5 次", desc:"偏多", score:2},
+        {title:"幾乎每天", desc:"高頻", score:3},
+      ]},
+      fatigue: { pick:null, options:[
+        {title:"幾乎沒有", desc:"", score:0, tired:false},
+        {title:"偶爾", desc:"", score:1, tired:false},
+        {title:"常常", desc:"", score:2, tired:true},
+        {title:"幾乎每天", desc:"", score:3, tired:true},
+      ]}
+    };
+
+    function initLifeQuiz(){
+      buildChoiceCards("life_act", lifeQuiz.act.options, (opt)=> lifeQuiz.act.pick = opt);
+      buildChoiceCards("life_sit", lifeQuiz.sit.options, (opt)=> lifeQuiz.sit.pick = opt);
+      buildChoiceCards("life_sleep", lifeQuiz.sleep.options,(opt)=> lifeQuiz.sleep.pick = opt);
+      buildChoiceCards("life_food", lifeQuiz.food.options, (opt)=> lifeQuiz.food.pick = opt);
+      buildChoiceCards("life_fatigue", lifeQuiz.fatigue.options, (opt)=> lifeQuiz.fatigue.pick = opt);
+    }
+
+    const muscleQuiz = {
+      calf: { pick:null, options:[
+        {title:"圈得住（很鬆）", desc:"風險較高訊號", score:2},
+        {title:"剛好圈住", desc:"介於中間", score:1},
+        {title:"圈不住", desc:"相對安全", score:0},
+        {title:"不確定", desc:"當作介於中間", score:1},
+      ]},
+      chair: { pick:null, options:[
+        {title:"不吃力", desc:"", score:0},
+        {title:"有點吃力", desc:"", score:1},
+        {title:"很吃力", desc:"", score:2},
+        {title:"需要用手撐/扶", desc:"", score:2},
+      ]},
+      walk: { pick:null, options:[
+        {title:"不太會", desc:"", score:0},
+        {title:"偶爾會", desc:"", score:1},
+        {title:"常常會", desc:"", score:2},
+        {title:"幾乎每次都會", desc:"", score:2},
+      ]}
+    };
+
+    function initMuscleQuiz(){
+      buildChoiceCards("muscle_calf", muscleQuiz.calf.options, (opt)=> muscleQuiz.calf.pick = opt);
+      buildChoiceCards("muscle_chair", muscleQuiz.chair.options, (opt)=> muscleQuiz.chair.pick = opt);
+      buildChoiceCards("muscle_walk", muscleQuiz.walk.options, (opt)=> muscleQuiz.walk.pick = opt);
+    }
+
+    function checkStep1(){
+      const age = Number(getEl("ageInput").value);
+      const h = Number(getEl("heightInput").value);
+      const w = Number(getEl("weightInput").value);
+
+      if(!age || age < 5 || age > 120) return "請輸入合理年齡（5–120）";
+      if(!h || h < 80 || h > 230) return "請輸入合理身高（80–230 cm）";
+      if(!w || w < 15 || w > 250) return "請輸入合理體重（15–250 kg）";
+      return null;
+    }
+
+    getEl("btnCalcBMI").addEventListener("click", () => {
+      hideToast();
+
+      const err = checkStep1();
+      if(err){ showToast(err); return; }
+
+      appData.age = Number(getEl("ageInput").value);
+      appData.heightCm = Number(getEl("heightInput").value);
+      appData.weightKg = Number(getEl("weightInput").value);
+      appData.waistCm = getEl("waistInput").value ? Number(getEl("waistInput").value) : null;
+
+      appData.bmi = calcBMI(appData.heightCm, appData.weightKg);
+      const info = bmiToInfo(appData.bmi);
+      appData.bmiLevel = info.level;
+      appData.bmiLabel = info.label;
+
+      showToast(`你的 BMI 為 ${appData.bmi.toFixed(1)}（${info.label}）。${info.desc}`);
+      applyThemeByLevel(appData.bmiLevel);
+
+      initLifeQuiz();
+
+      if(appData.bmiLevel === "good"){
+        const wantLife = confirm(
+          `你的 BMI 目前是「健康」。\n\n你想加做生活檢測嗎？\n（選「取消」會直接跳結果）`
+        );
+        if(wantLife) setStep(2);
+        else renderResult();
+      }else{
+        setTimeout(() => setStep(2), 200);
+      }
+    });
+
+    getEl("btnReset").addEventListener("click", () => {
+      ["ageInput","heightInput","weightInput","waistInput"].forEach(id => getEl(id).value = "");
+      hideToast();
+      updateLivePreview();
+      applyThemeByLevel(null);
+    });
+
+    getEl("btnBackTo1").addEventListener("click", () => setStep(1));
+
+    getEl("btnLifeDone").addEventListener("click", () => {
+      const keys = ["act","sit","sleep","food","fatigue"];
+
+      for(const k of keys){
+        if(!lifeQuiz[k].pick){
+          alert("生活檢測還有題目沒選完喔。");
+          return;
+        }
+      }
+      //這裡也別動這個動了好像會出事
+      const score = keys.reduce((sum, k) => sum + (lifeQuiz[k].pick.score ?? 0), 0);
+      appData.lifeScore = score;
+      appData.isTired = !!lifeQuiz.fatigue.pick.tired;
+
+      if(score <= 4) appData.lifeLevel = "good";
+      else if(score <= 9) appData.lifeLevel = "mid";
+      else appData.lifeLevel = "bad";
+
+      const age = appData.age ?? 0;
+      const bmiNotGood = (appData.bmiLevel !== "good");
+      const lifeBad = (appData.lifeLevel === "bad");
+      const shouldSuggestMuscle = (age >= 50 && (lifeBad || (bmiNotGood && appData.isTired)));
+
+      initMuscleQuiz();
+
+      if(shouldSuggestMuscle){
+        appData.didMuscleTest = true;
+        setStep(3);
+        return;
+      }
+
+      const want = confirm(
+        "系統判斷你不一定需要肌少症自我檢驗（多用在較高齡或風險者）。\n\n你還是想做嗎？"
+      );
+      appData.didMuscleTest = want;
+
+      if(want) setStep(3);
+      else renderResult();
+    });
+
+    getEl("btnBackTo2").addEventListener("click", () => setStep(2));
+
+    getEl("btnFinish").addEventListener("click", () => {
+      const keys = ["calf","chair","walk"];
+
+      for(const k of keys){
+        if(!muscleQuiz[k].pick){
+          alert("肌少症自我檢驗還有題目沒選完喔。");
+          return;
+        }
+      }
+
+      const score = keys.reduce((sum, k) => sum + (muscleQuiz[k].pick.score ?? 0), 0);
+      appData.muscleScore = score;
+
+      if(score <= 1) appData.muscleLevel = "good";
+      else if(score <= 3) appData.muscleLevel = "mid";
+      else appData.muscleLevel = "bad";
+
+      renderResult();
+    });
+
+    function renderResult(){
+      getEl("step1").style.display = "none";
+      getEl("step2").style.display = "none";
+      getEl("step3").style.display = "none";
+      getEl("result").style.display = "block";
+
+      getEl("stepTitle").textContent = "結果展示";
+      getEl("stepHint").textContent = "";
+      getEl("stepTag").textContent = "Done";
+      getEl("bar").style.width = "100%";
+
+      getEl("ageVal").textContent = appData.age ?? "—";
+      getEl("bmiVal").textContent = appData.bmi != null ? appData.bmi.toFixed(1) : "—";
+      getEl("lifeVal").textContent = appData.lifeLevel ? levelText3[appData.lifeLevel] : "Not Assessed";
+      getEl("muscleVal").textContent = appData.didMuscleTest
+        ? (appData.muscleLevel ? levelText3[appData.muscleLevel] : "—")
+        : "Not Assessed";
+
+      const levels = [];
+      if(appData.bmiLevel) levels.push(appData.bmiLevel);
+      if(appData.lifeLevel) levels.push(appData.lifeLevel);
+      if(appData.didMuscleTest && appData.muscleLevel) levels.push(appData.muscleLevel);
+
+      const severity = (lv) => lv === "bad" ? 3 : lv === "mid" ? 2 : 1;
+      const overallLevel = levels.length ? levels.sort((a,b)=> severity(b)-severity(a))[0] : null;
+
+      let overallLabel = "—";
+      if(appData.bmiLabel){
+        overallLabel = appData.bmiLabel;
+        if(overallLevel === "bad" && appData.bmiLevel !== "bad"){
+          overallLabel = "整體偏高風險";
+        }
+      }
+
+      setBadge(getEl("overallBadge"), overallLevel, overallLabel);
+      applyThemeByLevel(overallLevel);
+
+      const parts = [];
+      if(appData.bmiLabel) parts.push(`BMI：${appData.bmiLabel}`);
+      if(appData.lifeLevel) parts.push(`生活：${levelText3[appData.lifeLevel]}`);
+      if(appData.didMuscleTest && appData.muscleLevel) parts.push(`肌少症：${levelText3[appData.muscleLevel]}`);
+      getEl("resultLine").textContent = parts.length ? parts.join(" · ") : "—";
+
+      const tips = [];
+
+      if(appData.bmiLabel === bmiLabels.good){
+        tips.push("• BMI 落在健康範圍：維持目前生活節奏就很好。");
+      }else if(appData.bmiLabel === bmiLabels.mid_over){
+        tips.push("• BMI 微重：通常從『久坐時間』跟『外食頻率』各降一點就會很有感。");
+      }else if(appData.bmiLabel === bmiLabels.bad_under){
+        tips.push("• BMI 過輕：可以先穩定三餐與睡眠，若長期食慾差/疲勞明顯建議詢問專業。");
+      }else if(appData.bmiLabel === bmiLabels.bad_over){
+        tips.push("• BMI 過重：優先抓一個好改的點（睡眠 or 久坐 or 含糖飲），不要一次全改。");
+      }
+
+      if(appData.lifeLevel){
+        if(appData.lifeLevel === "good") tips.push("• 生活型態整體不錯：重點是持續，做得久才是王道。");
+        if(appData.lifeLevel === "mid")  tips.push("• 生活型態有改善空間：每 50 分鐘起身 2–3 分鐘，是最不痛苦但超有效的方法。");
+        if(appData.lifeLevel === "bad")  tips.push("• 生活型態偏高風險：先救睡眠 + 降久坐，疲勞感通常會最快改善。");
+      }else{
+        tips.push("• 你沒有做生活檢測：如果想更精準知道問題在哪，建議補做一次。");
+      }
+
+      if(appData.didMuscleTest && appData.muscleLevel){
+        if(appData.muscleLevel === "good") tips.push("• 肌少症自我檢驗偏安全：維持步行/下肢活動就很棒。");
+        if(appData.muscleLevel === "mid")  tips.push("• 肌少症自我檢驗中等：每週 2 次簡單下肢訓練（椅子起立/抬腿）循序增加。");
+        if(appData.muscleLevel === "bad")  tips.push("• 肌少症自我檢驗偏高風險：可考慮專業評估，並把蛋白質與安全阻力訓練納入日常。");
+      }
+
+      getEl("suggestionsText").textContent = tips.join("\n");
+    }
+
+    getEl("btnRestart").addEventListener("click", () => {
+      Object.assign(appData, {
+        stepNow: 1,
+        age: null, heightCm: null, weightKg: null, waistCm: null,
+        bmi: null, bmiLevel: null, bmiLabel: null,
+        lifeScore: null, lifeLevel: null, isTired: false,
+        muscleScore: null, muscleLevel: null, didMuscleTest: false
+      });
+
+      Object.keys(lifeQuiz).forEach(k => lifeQuiz[k].pick = null);
+      Object.keys(muscleQuiz).forEach(k => muscleQuiz[k].pick = null);
+
+      ["ageInput","heightInput","weightInput","waistInput"].forEach(id => getEl(id).value = "");
+
+      hideToast();
+      applyThemeByLevel(null);
+      updateLivePreview();
+
+      initLifeQuiz();
+      initMuscleQuiz();
+      setStep(1);
+    });
+
+    setStep(1);
+    initLifeQuiz();
+    initMuscleQuiz();
+    updateLivePreview();
+  </script>
+</body>
+</html>
